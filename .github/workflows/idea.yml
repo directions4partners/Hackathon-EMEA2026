@@ -6,7 +6,7 @@ on:
 
 jobs:
   check-deadline-and-comment:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       issues: write
 
@@ -32,30 +32,19 @@ jobs:
             echo "on_time=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Add base "idea" label
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: idea
-
-      - name: Add "on-time" label
-        if: steps.check.outputs.on_time == 'true'
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: on-time
-
-      - name: Add "late" label
-        if: steps.check.outputs.on_time != 'true'
-        uses: actions-ecosystem/action-add-labels@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          labels: late
+      - name: Add labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STATUS_LABEL: ${{ steps.check.outputs.on_time == 'true' && 'on-time' || 'late' }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/labels" \
+            -f "labels[]=idea" -f "labels[]=$STATUS_LABEL"
 
       # Status comment (explicitly stating on time or late)
       - name: Status comment — on time
         if: steps.check.outputs.on_time == 'true'
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -64,7 +53,7 @@ jobs:
 
       - name: Status comment — late
         if: steps.check.outputs.on_time != 'true'
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -74,7 +63,7 @@ jobs:
       # Friendly message tailored to on-time vs late
       - name: Friendly comment — on time
         if: steps.check.outputs.on_time == 'true'
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
@@ -92,7 +81,7 @@ jobs:
 
       - name: Friendly comment — late
         if: steps.check.outputs.on_time != 'true'
-        uses: peter-evans/create-or-update-comment@v3
+        uses: peter-evans/create-or-update-comment@v5
         with:
           issue-number: ${{ github.event.issue.number }}
           body: |
